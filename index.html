@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>90-Day Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0e1b26;
+    --panel:#12232f;
+    --panel-2:#152a38;
+    --pool:#1f5770;
+    --pool-soft:#284f63;
+    --sage:#6f9468;
+    --sage-soft:#3a4a3a;
+    --gold:#c9a15c;
+    --gold-soft:#4a4130;
+    --rust:#c1622d;
+    --rust-soft:#4a2f22;
+    --chalk:#efe8d8;
+    --chalk-dim:rgba(239,232,216,0.58);
+    --chalk-faint:rgba(239,232,216,0.28);
+    --line:rgba(239,232,216,0.12);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top, rgba(31,87,112,0.35), transparent 60%),
+      var(--ink);
+    color:var(--chalk);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:24px 18px 0;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--chalk-dim);
+    display:flex;
+    gap:10px;
+    align-items:center;
+  }
+  .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--pool);}
+  .eyebrow .dot.hyp{background:var(--sage);}
+  .eyebrow .dot.str{background:var(--gold);}
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:38px;
+    margin:6px 0 2px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--chalk-dim);font-size:14px;margin-bottom:18px;}
+  .sub b{color:var(--chalk);font-weight:600;}
+
+  /* Lane timeline */
+  .lanes-outer{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 14px 10px;
+    margin-bottom:16px;
+  }
+  .lanes-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .lanes-head .legend{display:flex;gap:14px;font-size:11px;color:var(--chalk-dim);font-family:'JetBrains Mono',monospace;}
+  .lanes-head .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+  .lanes-scroll{overflow-x:auto;padding-bottom:6px;}
+  .lanes{display:flex;gap:3px;min-width:max-content;}
+  .week-group{display:flex;gap:3px;padding-right:6px;border-right:1px dashed var(--chalk-faint);margin-right:3px;}
+  .week-group:last-child{border-right:none;}
+  .cell{
+    width:11px;height:26px;border-radius:3px;
+    cursor:pointer;
+    background:var(--pool-soft);
+    opacity:0.45;
+    position:relative;
+    transition:opacity .12s, transform .12s;
+  }
+  .cell.hyp{background:var(--sage-soft);}
+  .cell.str{background:var(--gold-soft);}
+  .cell:hover{opacity:0.85;transform:translateY(-2px);}
+  .cell.logged{opacity:0.95;}
+  .cell.logged::after{
+    content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+    width:3px;height:3px;border-radius:50%;background:var(--chalk);
+  }
+  .cell.active{opacity:1;outline:2px solid var(--chalk);outline-offset:1px;}
+  .todaybar{display:flex;gap:8px;margin-top:10px;}
+  .todaybar button{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    background:none;border:1px solid var(--line);color:var(--chalk-dim);
+    padding:6px 10px;border-radius:8px;cursor:pointer;
+  }
+  .todaybar button:hover{border-color:var(--chalk-faint);color:var(--chalk);}
+  .todaybar input[type=date]{
+    background:var(--panel-2);border:1px solid var(--line);color:var(--chalk);
+    font-family:'JetBrains Mono',monospace;font-size:11px;border-radius:8px;padding:5px 8px;
+  }
+
+  /* Day card */
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:20px 20px 22px;
+    margin-bottom:16px;
+  }
+  .card-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+  .day-title{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;}
+  .phase-pill{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+    padding:4px 9px;border-radius:20px;border:1px solid var(--line);color:var(--chalk-dim);
+  }
+  .phase-pill.endurance{color:#a9c9d8;border-color:var(--pool-soft);}
+  .phase-pill.hypertrophy{color:#b7d0af;border-color:var(--sage-soft);}
+  .phase-pill.strength{color:#e3caa0;border-color:var(--gold-soft);}
+  .date-line{color:var(--chalk-dim);font-size:13px;margin-bottom:16px;}
+  .taper-note{
+    background:var(--rust-soft);border:1px solid rgba(193,98,45,0.5);color:#f0c4a8;
+    font-size:12.5px;padding:8px 12px;border-radius:8px;margin-bottom:14px;
+  }
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--chalk-dim);margin:18px 0 8px;
+  }
+  .section-label:first-of-type{margin-top:0;}
+
+  .exercise{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 0;border-bottom:1px solid var(--line);
+  }
+  .exercise:last-child{border-bottom:none;}
+  .ex-check{
+    width:20px;height:20px;flex:0 0 20px;border-radius:6px;border:1.5px solid var(--chalk-faint);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:transparent;
+  }
+  .ex-check.done{background:var(--sage);border-color:var(--sage);color:var(--ink);}
+  .ex-main{flex:1;min-width:0;}
+  .ex-name{font-size:14.5px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:7px;}
+  .ex-name.ex-toggle:hover{color:var(--chalk);}
+  .info-dot{
+    width:14px;height:14px;border-radius:50%;border:1px solid var(--chalk-faint);
+    color:var(--chalk-dim);font-size:9px;font-family:'JetBrains Mono',monospace;
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px;
+  }
+  .ex-name .flag{color:var(--rust);font-size:11px;font-family:'JetBrains Mono',monospace;margin-left:2px;}
+  .ex-desc{
+    display:none;font-size:13px;color:var(--chalk-dim);line-height:1.5;
+    margin-top:8px;padding:10px 12px;background:var(--panel-2);border-radius:8px;
+  }
+  .ex-desc.open{display:block;}
+  .ex-desc p{margin:0 0 8px;}
+  .ex-desc a{color:#a9c9d8;text-decoration:none;font-family:'JetBrains Mono',monospace;font-size:12px;}
+  .ex-desc a:hover{text-decoration:underline;}
+  .ex-meta{font-size:12px;color:var(--chalk-dim);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+  .ex-weight{
+    width:66px;flex:0 0 66px;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--chalk);
+    font-family:'JetBrains Mono',monospace;font-size:13px;text-align:center;
+    border-radius:8px;padding:8px 4px;
+  }
+  .ex-weight::placeholder{color:var(--chalk-faint);}
+  .gated-note{
+    font-size:11.5px;color:#e3ac83;background:var(--rust-soft);border-radius:6px;
+    padding:6px 9px;margin-top:6px;line-height:1.4;
+  }
+
+  .pool-box{
+    background:var(--panel-2);border-radius:10px;padding:14px 16px;
+  }
+  .pool-target{font-size:14px;margin-bottom:10px;}
+  .pool-target b{color:var(--chalk);}
+  .pool-inputs{display:flex;gap:10px;}
+  .pool-inputs input{
+    background:var(--ink);border:1px solid var(--line);color:var(--chalk);
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+    border-radius:8px;padding:8px 10px;flex:1;
+  }
+  .rest-note{font-size:13.5px;color:var(--chalk-dim);}
+
+  .watch-grid{display:grid;grid-template-columns:1fr;gap:8px;}
+  .watch-item{display:flex;align-items:center;gap:10px;font-size:13.5px;}
+  .watch-item input[type=checkbox]{
+    width:17px;height:17px;accent-color:var(--sage);flex:0 0 17px;
+  }
+
+  .protein-row{display:flex;align-items:center;gap:10px;}
+  .protein-row input{
+    width:70px;background:var(--panel-2);border:1px solid var(--line);color:var(--chalk);
+    font-family:'JetBrains Mono',monospace;font-size:14px;text-align:center;
+    border-radius:8px;padding:8px 4px;
+  }
+  .protein-row .of{color:var(--chalk-dim);font-family:'JetBrains Mono',monospace;font-size:13px;}
+  .protein-bar{height:6px;border-radius:3px;background:var(--panel-2);margin-top:8px;overflow:hidden;}
+  .protein-bar-fill{height:100%;background:var(--sage);width:0%;transition:width .2s;}
+
+  textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--chalk);
+    font-family:'Inter',sans-serif;font-size:13.5px;border-radius:10px;padding:10px 12px;
+    resize:vertical;min-height:56px;
+  }
+  textarea::placeholder{color:var(--chalk-faint);}
+
+  .save-status{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--chalk-faint);
+    text-align:right;margin-top:10px;height:14px;
+  }
+  .save-status.show{color:var(--sage);}
+
+  .foot-note{font-size:12px;color:var(--chalk-faint);text-align:center;padding:10px 20px 0;line-height:1.6;}
+
+  @media (max-width:480px){
+    h1{font-size:30px;}
+    .card{padding:16px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow"><span class="dot"></span>ENDURANCE <span class="dot hyp"></span>HYPERTROPHY <span class="dot str"></span>STRENGTH</div>
+  <h1>90-Day Log</h1>
+  <div class="sub" id="subhead">Loading your plan…</div>
+
+  <div class="lanes-outer">
+    <div class="lanes-head">
+      <div class="legend">
+        <span><i style="background:var(--pool-soft)"></i>Days 1–30</span>
+        <span><i style="background:var(--sage-soft)"></i>31–60</span>
+        <span><i style="background:var(--gold-soft)"></i>61–90</span>
+      </div>
+    </div>
+    <div class="lanes-scroll"><div class="lanes" id="lanes"></div></div>
+    <div class="todaybar">
+      <button id="jumpToday">Jump to today</button>
+      <input type="date" id="startDate">
+      <span style="font-size:11px;color:var(--chalk-faint);font-family:'JetBrains Mono',monospace;align-self:center;">← plan start date</span>
+    </div>
+  </div>
+
+  <div class="card" id="dayCard"></div>
+
+  <div class="foot-note">Everything here saves automatically on this device as you log it. Adjust exercises freely if PT or your physician changes something.</div>
+</div>
+
+<script>
+const PHASES = {
+  endurance:  { key:'endurance',  label:'Endurance',   range:[1,30],  rest:'45–60 sec between sets', pool:'10–15 laps (200–300m) freestyle, easy pace. Hold steady, don\'t chase volume yet.' },
+  hypertrophy:{ key:'hypertrophy',label:'Hypertrophy',  range:[31,60], rest:'60–90 sec between sets', pool:'12–15 laps steady, or try intervals: 4×50m faster pace with rest.' },
+  strength:   { key:'strength',   label:'Strength',     range:[61,90], rest:'2–3 min between main lifts', pool:'Push toward continuous 400–500m, or interval work if it\'s feeling good.' }
+};
+
+const EXERCISES = {
+  endurance: {
+    A: [
+      {id:'end-A-legpress', name:'Leg Press', sets:'3 × 15–20', rpe:'RPE 6'},
+      {id:'end-A-goblet', name:'Goblet Squat', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-A-hamcurl', name:'Seated Leg Curl', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-A-glutebridge', name:'Glute Bridge', sets:'3 × 20', rpe:'RPE 6'},
+      {id:'end-A-calf', name:'Standing Calf Raise', sets:'3 × 20', rpe:'RPE 6'},
+      {id:'end-A-deadbug', name:'Dead Bug', sets:'3 × 12/side', rpe:'Bodyweight'}
+    ],
+    B: [
+      {id:'end-B-row', name:'Seated Cable Row', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-B-lat', name:'Lat Pulldown', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-B-chest', name:'Machine Chest Press', sets:'2 × 15', rpe:'RPE 5', note:'Rib test — back off immediately if sharp T6 pain.'},
+      {id:'end-B-shoulder', name:'Seated Dumbbell Shoulder Press', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-B-curl', name:'Cable Bicep Curl', sets:'2 × 15', rpe:'RPE 6'},
+      {id:'end-B-tricep', name:'Rope Triceps Pushdown', sets:'2 × 15', rpe:'RPE 6'},
+      {id:'end-B-plank', name:'Plank', sets:'3 × 30 sec', rpe:'Bodyweight'}
+    ],
+    C: [
+      {id:'end-C-legext', name:'Leg Extension', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-C-hipab', name:'Seated Hip Abduction (light)', sets:'2 × 15', rpe:'RPE 4', gated:true, note:'PT clearance required before loading this — it directly loads the trochanter.'},
+      {id:'end-C-stepup', name:'Low Step-Up (4–6")', sets:'2 × 10/side', rpe:'Bodyweight'},
+      {id:'end-C-row2', name:'Standing Cable Row', sets:'3 × 15', rpe:'RPE 6'},
+      {id:'end-C-carry', name:'Farmer\'s Carry', sets:'3 × 30 sec walk', rpe:'Light DBs'},
+      {id:'end-C-birddog', name:'Bird Dog', sets:'3 × 12/side', rpe:'Bodyweight'}
+    ]
+  },
+  hypertrophy: {
+    A: [
+      {id:'hyp-A-legpress', name:'Leg Press', sets:'4 × 10–12', rpe:'RPE 7–8'},
+      {id:'hyp-A-squat', name:'Goblet / Dumbbell Squat', sets:'4 × 10', rpe:'RPE 7–8'},
+      {id:'hyp-A-rdl', name:'Romanian Deadlift (dumbbell)', sets:'3 × 10', rpe:'RPE 7'},
+      {id:'hyp-A-hamcurl', name:'Seated Leg Curl', sets:'3 × 12', rpe:'RPE 7'},
+      {id:'hyp-A-glutebridge', name:'Glute Bridge (loaded)', sets:'3 × 12', rpe:'RPE 7'},
+      {id:'hyp-A-calf', name:'Standing Calf Raise', sets:'4 × 12', rpe:'RPE 7'}
+    ],
+    B: [
+      {id:'hyp-B-row', name:'Seated Cable Row', sets:'4 × 10', rpe:'RPE 7–8'},
+      {id:'hyp-B-lat', name:'Lat Pulldown', sets:'4 × 10', rpe:'RPE 7–8'},
+      {id:'hyp-B-incline', name:'Incline Dumbbell Press', sets:'3 × 10', rpe:'RPE 7', note:'Progress here only if machine press stayed rib-pain-free in Phase 1.'},
+      {id:'hyp-B-shoulder', name:'Seated Dumbbell Shoulder Press', sets:'3 × 10', rpe:'RPE 7'},
+      {id:'hyp-B-curl', name:'Dumbbell Bicep Curl', sets:'3 × 12', rpe:'RPE 7'},
+      {id:'hyp-B-tricep', name:'Overhead Triceps Extension', sets:'3 × 12', rpe:'RPE 7'},
+      {id:'hyp-B-plank', name:'Weighted Plank', sets:'3 × 40 sec', rpe:'Light plate'},
+      {id:'hyp-B-chop', name:'Cable Woodchop (light)', sets:'2 × 10/side', rpe:'RPE 6'}
+    ],
+    C: [
+      {id:'hyp-C-legext', name:'Leg Extension', sets:'3 × 12', rpe:'RPE 7'},
+      {id:'hyp-C-hipab', name:'Standing Hip Abduction Cable', sets:'3 × 12', rpe:'RPE 6', gated:true, note:'PT clearance required.'},
+      {id:'hyp-C-lunge', name:'Walking Lunge (shallow, forward only)', sets:'3 × 8/side', rpe:'Bodyweight / light', note:'Skip entirely if any hip pain shows up.'},
+      {id:'hyp-C-row2', name:'Chest-Supported Row', sets:'3 × 10', rpe:'RPE 7'},
+      {id:'hyp-C-carry', name:'Farmer\'s Carry (heavier)', sets:'3 × 40 sec walk', rpe:'Moderate DBs'},
+      {id:'hyp-C-pallof', name:'Pallof Press', sets:'3 × 10/side', rpe:'Cable'}
+    ]
+  },
+  strength: {
+    A: [
+      {id:'str-A-legpress', name:'Leg Press', sets:'4 × 6–8', rpe:'RPE 8'},
+      {id:'str-A-squat', name:'Barbell / Dumbbell Squat', sets:'4 × 6', rpe:'RPE 8'},
+      {id:'str-A-rdl', name:'Romanian Deadlift', sets:'4 × 6', rpe:'RPE 8'},
+      {id:'str-A-hamcurl', name:'Seated Leg Curl', sets:'3 × 8', rpe:'RPE 8'},
+      {id:'str-A-hipthrust', name:'Hip Thrust (barbell)', sets:'3 × 8', rpe:'RPE 8', note:'Only if hip has been fully pain-free through Phase 2.'},
+      {id:'str-A-calf', name:'Standing Calf Raise', sets:'4 × 10', rpe:'RPE 7'}
+    ],
+    B: [
+      {id:'str-B-row', name:'Barbell / Machine Row', sets:'4 × 6–8', rpe:'RPE 8'},
+      {id:'str-B-lat', name:'Lat Pulldown', sets:'3 × 8', rpe:'RPE 8'},
+      {id:'str-B-bench', name:'Flat / Incline Bench Press', sets:'4 × 6', rpe:'RPE 8', note:'Only if fully rib-pain-free through Phase 2.'},
+      {id:'str-B-shoulder', name:'Standing DB / Barbell Shoulder Press', sets:'4 × 6', rpe:'RPE 8'},
+      {id:'str-B-curl', name:'Barbell Bicep Curl', sets:'3 × 8', rpe:'RPE 7'},
+      {id:'str-B-tricep', name:'Close-Grip Bench or Dips', sets:'3 × 8', rpe:'RPE 7'},
+      {id:'str-B-core', name:'Hanging Knee Raise or Weighted Plank', sets:'3 × max / 45 sec', rpe:'Bodyweight / loaded'}
+    ],
+    C: [
+      {id:'str-C-legext', name:'Leg Extension', sets:'3 × 8', rpe:'RPE 7'},
+      {id:'str-C-lateral', name:'Lateral Band Walk (light)', sets:'3 × 10 steps/side', rpe:'Light band', gated:true, note:'PT-gated — this is your soccer-readiness marker.'},
+      {id:'str-C-trapbar', name:'Trap Bar Deadlift', sets:'4 × 6', rpe:'RPE 8'},
+      {id:'str-C-row2', name:'Chest-Supported or Cable Row', sets:'3 × 8', rpe:'RPE 8'},
+      {id:'str-C-carry', name:'Loaded Carry (farmer\'s or suitcase)', sets:'3 × 40 sec', rpe:'Heavier'},
+      {id:'str-C-chop', name:'Rotational Cable Chop', sets:'3 × 8/side', rpe:'Moderate'}
+    ]
+  }
+};
+
+const EX_DESC = {
+  'Leg Press': 'Push a weighted platform away with your feet while seated in the machine. Works quads, glutes, and hamstrings without loading your spine.',
+  'Goblet Squat': 'Hold a dumbbell or kettlebell at chest height and squat down, keeping your torso upright and knees tracking over your toes.',
+  'Goblet / Dumbbell Squat': 'Hold a dumbbell or kettlebell at chest height and squat down, keeping your torso upright and knees tracking over your toes.',
+  'Barbell / Dumbbell Squat': 'Standard squat with a barbell on your back or dumbbells at your sides — bend at the hips and knees to lower, then stand back up.',
+  'Seated Leg Curl': 'Sit in the machine and curl the pad toward your glutes by bending your knees. Isolates the hamstrings.',
+  'Glute Bridge': 'Lie on your back, feet flat, and lift your hips toward the ceiling by squeezing your glutes, then lower with control.',
+  'Glute Bridge (loaded)': 'Same as a glute bridge, with a barbell or plate resting across your hips for added resistance.',
+  'Standing Calf Raise': 'Stand on a platform or flat ground and rise onto your toes, then lower slowly.',
+  'Dead Bug': 'Lie on your back with arms up and knees bent 90°. Slowly lower one arm and the opposite leg toward the floor while keeping your lower back pressed down, then return.',
+  'Seated Cable Row': 'Sit at the cable row station, grab the handle, and pull it toward your torso by squeezing your shoulder blades together.',
+  'Standing Cable Row': 'Standing version of the cable row — pull the handle toward your torso while keeping your core braced.',
+  'Lat Pulldown': 'Sit at the machine and pull the bar down toward your upper chest, leading with your elbows.',
+  'Machine Chest Press': 'Sit in the machine and press the handles forward until your arms are extended, then return with control.',
+  'Seated Dumbbell Shoulder Press': 'Sit with a dumbbell in each hand at shoulder height, then press overhead until your arms are extended.',
+  'Standing DB / Barbell Shoulder Press': 'Standing, press dumbbells or a barbell from shoulder height straight overhead.',
+  'Cable Bicep Curl': 'Stand facing a low cable pulley and curl the handle up toward your shoulders, keeping elbows tucked.',
+  'Dumbbell Bicep Curl': 'Standing or seated, curl a dumbbell in each hand up toward your shoulders.',
+  'Barbell Bicep Curl': 'Standing, curl a barbell up toward your shoulders using both hands.',
+  'Rope Triceps Pushdown': 'Stand at a high cable pulley with a rope attachment and push it down, fully extending your elbows.',
+  'Overhead Triceps Extension': 'Hold a dumbbell overhead with both hands and lower it behind your head by bending your elbows, then extend back up.',
+  'Close-Grip Bench or Dips': 'Either a bench press with hands closer together, or dips on parallel bars/machine — both emphasize the triceps.',
+  'Plank': 'Hold a straight-line position on your forearms and toes, bracing your core, without letting your hips sag or pike.',
+  'Weighted Plank': 'Same as a plank, with light weight placed on your back for added resistance.',
+  'Leg Extension': 'Sit in the machine and extend your knees to lift the pad. Isolates the quads.',
+  'Seated Hip Abduction (light)': 'Sit in the machine and push your knees outward against the pads. Isolates the outer hip/glute.',
+  'Standing Hip Abduction Cable': 'Attach a cable to your ankle and, standing, kick your leg out to the side against resistance.',
+  'Low Step-Up (4–6")': 'Step up onto a low box or step with one foot, driving through the heel, then step back down.',
+  "Farmer's Carry": 'Hold a dumbbell in each hand at your sides and walk for the prescribed time, keeping posture tall.',
+  "Farmer's Carry (heavier)": 'Same as a farmer\'s carry with more weight — hold a dumbbell in each hand and walk tall.',
+  "Loaded Carry (farmer's or suitcase)": 'Carry a weight in one or both hands for the prescribed time, keeping posture tall and core braced.',
+  'Bird Dog': 'On hands and knees, extend one arm and the opposite leg at the same time, keeping your spine neutral, then switch sides.',
+  'Romanian Deadlift (dumbbell)': 'Hold dumbbells in front of your thighs and hinge at the hips, lowering the weights with a slight knee bend and flat back, then return to standing.',
+  'Romanian Deadlift': 'Hold a barbell or dumbbells in front of your thighs and hinge at the hips, lowering the weight with a slight knee bend and flat back, then return to standing.',
+  'Incline Dumbbell Press': 'Lie on an inclined bench and press dumbbells up from chest height until your arms are extended.',
+  'Flat / Incline Bench Press': 'Lying on a bench, press a barbell or dumbbells up from chest level until your arms are extended.',
+  'Cable Woodchop (light)': 'Stand sideways to a cable pulley and pull the handle diagonally across your body, rotating through your torso.',
+  'Rotational Cable Chop': 'Similar to a woodchop — move the cable handle across your body in a chopping motion while rotating through the core.',
+  'Walking Lunge (shallow, forward only)': 'Step forward into a shallow lunge, then bring your back foot through to step into the next lunge, alternating sides as you move forward.',
+  'Chest-Supported Row': 'Lie face-down on an inclined bench and row dumbbells or a handle toward your body, letting the bench support your torso.',
+  'Chest-Supported or Cable Row': 'Either a chest-supported row on an inclined bench, or a seated/standing cable row — both pull weight toward your torso.',
+  'Pallof Press': 'Hold a cable or band at chest height and press it straight out in front of you, resisting the pull to rotate your torso.',
+  'Hip Thrust (barbell)': 'Upper back against a bench, barbell across your hips — drive your hips upward by squeezing your glutes, then lower with control.',
+  'Barbell / Machine Row': 'Bent-over barbell row or a machine row — pull the weight toward your torso to work the back.',
+  'Hanging Knee Raise or Weighted Plank': 'Either hang from a pull-up bar and raise your knees toward your chest, or hold a weighted plank — both work the core.',
+  'Lateral Band Walk (light)': 'Place a resistance band around your ankles or thighs and take controlled side steps, keeping tension on the band throughout.',
+  'Trap Bar Deadlift': 'Stand inside a trap/hex bar, grip the handles, and lift by driving through your legs and extending your hips, keeping your back flat.'
+};
+
+const WATCHPOINTS = [
+  {id:'rib', label:'Rib pain today? (location / trigger / deep-breath pain)'},
+  {id:'hiplimp', label:'Any hip limp on dog walks?'},
+  {id:'posture', label:'Caught crossed legs / knee against desk?'},
+  {id:'standing', label:'Stood at desk 30–45 min block?'},
+  {id:'sleep', label:'Back-sleeping or knee pillow used?'},
+  {id:'cramp', label:'Night leg cramp? (check salt/potassium intake)'}
+];
+
+const DOW_PLAN = {
+  1:{type:'gym', slot:'A', pool:true,  label:'Gym A — Lower Body'},
+  2:{type:'pool', label:'Pool Day'},
+  3:{type:'gym', slot:'B', pool:false, label:'Gym B — Upper Body + Core'},
+  4:{type:'pool', label:'Pool Day'},
+  5:{type:'gym', slot:'C', pool:false, label:'Gym C — Full Body'},
+  6:{type:'pool', label:'Pool Day (AM)'},
+  0:{type:'restpool', label:'Pool (AM) or Rest'}
+};
+
+let startDate = null;
+let selectedDay = 1;
+let dayData = {};
+let saveTimer = null;
+
+function pad(n){return n<10?'0'+n:''+n;}
+function fmtDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function dateForDay(n){
+  const d = new Date(startDate);
+  d.setDate(d.getDate() + (n-1));
+  return d;
+}
+function phaseForDay(n){
+  if(n<=30) return PHASES.endurance;
+  if(n<=60) return PHASES.hypertrophy;
+  return PHASES.strength;
+}
+function planForDay(n){
+  const date = dateForDay(n);
+  const dow = date.getDay();
+  return {date, dow, plan:DOW_PLAN[dow], phase:phaseForDay(n)};
+}
+
+const STORE_PREFIX = 'ninety-day-plan:';
+let storageBroken = false;
+
+async function loadSettings(){
+  try{
+    const raw = localStorage.getItem(STORE_PREFIX+'settings');
+    if(raw){
+      const s = JSON.parse(raw);
+      if(s.startDate) startDate = new Date(s.startDate+'T00:00:00');
+    }
+  }catch(e){ storageBroken = true; }
+  if(!startDate){ startDate = new Date(); startDate.setHours(0,0,0,0); }
+}
+async function saveSettings(){
+  try{ localStorage.setItem(STORE_PREFIX+'settings', JSON.stringify({startDate: fmtDate(startDate)})); }catch(e){ storageBroken = true; }
+}
+
+async function loadDay(n){
+  try{
+    const raw = localStorage.getItem(STORE_PREFIX+'day:'+n);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ storageBroken = true; }
+  return {exercises:{}, pool:{distance:'',time:''}, watch:{}, protein:'', notes:'', restDone:false};
+}
+async function saveDay(n, data){
+  try{
+    localStorage.setItem(STORE_PREFIX+'day:'+n, JSON.stringify(data));
+    flashSaved();
+  }catch(e){}
+}
+function queueSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>saveDay(selectedDay, dayData), 350);
+}
+function flashSaved(){
+  const el = document.getElementById('saveStatus');
+  if(!el) return;
+  el.textContent = 'Saved';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{el.classList.remove('show'); el.textContent='';}, 1400);
+}
+
+function dayNumberFromDate(d){
+  const diff = Math.round((d - startDate)/86400000) + 1;
+  return diff;
+}
+
+async function buildLanes(){
+  const lanes = document.getElementById('lanes');
+  lanes.innerHTML='';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayNum = dayNumberFromDate(today);
+
+  let group;
+  for(let n=1;n<=90;n++){
+    if((n-1)%7===0){
+      group = document.createElement('div');
+      group.className='week-group';
+      lanes.appendChild(group);
+    }
+    const {phase} = planForDay(n);
+    const cell = document.createElement('div');
+    cell.className = 'cell ' + (phase.key==='hypertrophy'?'hyp':phase.key==='strength'?'str':'');
+    if(n===todayNum) cell.classList.add('active');
+    cell.title = 'Day '+n;
+    cell.dataset.day = n;
+    cell.addEventListener('click', ()=>selectDay(n));
+    group.appendChild(cell);
+  }
+  markActive();
+}
+function markActive(){
+  document.querySelectorAll('.cell').forEach(c=>{
+    c.classList.toggle('active', Number(c.dataset.day)===selectedDay);
+  });
+}
+function markLoggedDots(){
+  const cells = document.querySelectorAll('.cell');
+  cells.forEach(cell=>{
+    const n = Number(cell.dataset.day);
+    try{
+      const raw = localStorage.getItem(STORE_PREFIX+'day:'+n);
+      if(raw){
+        const d = JSON.parse(raw);
+        const hasLog = Object.keys(d.exercises||{}).some(k=>d.exercises[k].done || d.exercises[k].weight) ||
+                       (d.pool && (d.pool.distance||d.pool.time)) || d.protein || d.notes;
+        if(hasLog) cell.classList.add('logged');
+      }
+    }catch(e){}
+  });
+}
+
+function scrollActiveIntoView(){
+  const el = document.querySelector('.cell.active');
+  if(el) el.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
+}
+
+async function selectDay(n){
+  selectedDay = n;
+  markActive();
+  scrollActiveIntoView();
+  dayData = await loadDay(n);
+  renderCard();
+}
+
+function renderCard(){
+  const {date, dow, plan, phase} = planForDay(selectedDay);
+  const card = document.getElementById('dayCard');
+  const weekday = date.toLocaleDateString('en-US',{weekday:'long'});
+  const dateStr = date.toLocaleDateString('en-US',{month:'long', day:'numeric', year:'numeric'});
+
+  let html = '';
+  html += `<div class="card-head">
+      <div>
+        <div class="day-title">Day ${selectedDay} · ${weekday}</div>
+      </div>
+      <div class="phase-pill ${phase.key}">${phase.label}</div>
+    </div>
+    <div class="date-line">${dateStr}${plan.type==='gym' ? ' · ' + plan.label : ''}</div>`;
+
+  if(selectedDay>=85){
+    html += `<div class="taper-note">Taper week — cut volume roughly 30–40% below the numbers listed so you arrive at your 12-week follow-up recovered, not fatigued.</div>`;
+  }
+
+  if(plan.type==='gym'){
+    const list = EXERCISES[phase.key][plan.slot];
+    html += `<div class="section-label">${plan.label} · rest ${phase.rest}</div>`;
+    list.forEach(ex=>{
+      const saved = dayData.exercises[ex.id] || {};
+      const desc = EX_DESC[ex.name] || '';
+      const demoUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent('how to do ' + ex.name + ' exercise proper form');
+      html += `<div class="exercise-wrap">
+      <div class="exercise">
+        <div class="ex-check ${saved.done?'done':''}" data-exid="${ex.id}">✓</div>
+        <div class="ex-main">
+          <div class="ex-name ex-toggle" data-exid="${ex.id}" role="button" tabindex="0">${ex.name}<span class="info-dot">i</span>${ex.gated?'<span class="flag">⚠ PT-gated</span>':''}</div>
+          <div class="ex-meta">${ex.sets} @ ${ex.rpe}</div>
+          ${ex.note?`<div class="gated-note">${ex.note}</div>`:''}
+          <div class="ex-desc" id="desc-${ex.id}">
+            ${desc?`<p>${desc}</p>`:''}
+            <a href="${demoUrl}" target="_blank" rel="noopener">Watch a demo ↗</a>
+          </div>
+        </div>
+        <input class="ex-weight" data-exid="${ex.id}" type="text" inputmode="decimal" placeholder="lb" value="${saved.weight?escapeAttr(saved.weight):''}">
+      </div>
+      </div>`;
+    });
+    if(plan.pool){
+      html += `<div class="section-label">Optional Pool</div>
+        <div class="pool-box">
+          <div class="pool-target">${phase.pool}</div>
+          <div class="pool-inputs">
+            <input type="text" id="poolDistance" placeholder="Laps / meters" value="${escapeAttr(dayData.pool.distance||'')}">
+            <input type="text" id="poolTime" placeholder="Time (optional)" value="${escapeAttr(dayData.pool.time||'')}">
+          </div>
+        </div>`;
+    }
+  } else if(plan.type==='pool'){
+    html += `<div class="section-label">Pool</div>
+      <div class="pool-box">
+        <div class="pool-target">${phase.pool}</div>
+        <div class="pool-inputs">
+          <input type="text" id="poolDistance" placeholder="Laps / meters" value="${escapeAttr(dayData.pool.distance||'')}">
+          <input type="text" id="poolTime" placeholder="Time (optional)" value="${escapeAttr(dayData.pool.time||'')}">
+        </div>
+      </div>`;
+  } else {
+    html += `<div class="section-label">Pool or Rest</div>
+      <div class="pool-box">
+        <div class="pool-target">${phase.pool}</div>
+        <div class="rest-note" style="margin-bottom:10px;">Or take this as a full rest day — your call based on how the week felt.</div>
+        <div class="pool-inputs">
+          <input type="text" id="poolDistance" placeholder="Laps / meters (leave blank if resting)" value="${escapeAttr(dayData.pool.distance||'')}">
+          <input type="text" id="poolTime" placeholder="Time (optional)" value="${escapeAttr(dayData.pool.time||'')}">
+        </div>
+      </div>`;
+  }
+
+  html += `<div class="section-label">Watch Points</div>
+    <div class="watch-grid">`;
+  WATCHPOINTS.forEach(w=>{
+    html += `<label class="watch-item">
+      <input type="checkbox" data-watchid="${w.id}" ${dayData.watch[w.id]?'checked':''}>
+      ${w.label}
+    </label>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="section-label">Protein (target 160g)</div>
+    <div class="protein-row">
+      <input type="text" inputmode="numeric" id="proteinInput" placeholder="0" value="${escapeAttr(dayData.protein||'')}">
+      <span class="of">/ 160g</span>
+    </div>
+    <div class="protein-bar"><div class="protein-bar-fill" id="proteinBar"></div></div>`;
+
+  html += `<div class="section-label">Notes</div>
+    <textarea id="notesInput" placeholder="Anything worth remembering from today...">${escapeHTML(dayData.notes||'')}</textarea>`;
+
+  html += `<div class="save-status" id="saveStatus"></div>`;
+
+  card.innerHTML = html;
+  updateProteinBar();
+  wireCardEvents();
+}
+
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHTML(s); }
+
+function updateProteinBar(){
+  const val = parseFloat(dayData.protein)||0;
+  const pct = Math.max(0, Math.min(100, (val/160)*100));
+  const bar = document.getElementById('proteinBar');
+  if(bar) bar.style.width = pct+'%';
+}
+
+function wireCardEvents(){
+  document.querySelectorAll('.ex-toggle').forEach(el=>{
+    const open = ()=>{
+      const panel = document.getElementById('desc-'+el.dataset.exid);
+      if(panel) panel.classList.toggle('open');
+    };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  });
+  document.querySelectorAll('.ex-check').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = el.dataset.exid;
+      dayData.exercises[id] = dayData.exercises[id] || {};
+      dayData.exercises[id].done = !dayData.exercises[id].done;
+      el.classList.toggle('done', dayData.exercises[id].done);
+      queueSave();
+    });
+  });
+  document.querySelectorAll('.ex-weight').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const id = el.dataset.exid;
+      dayData.exercises[id] = dayData.exercises[id] || {};
+      dayData.exercises[id].weight = el.value;
+      queueSave();
+    });
+  });
+  const pd = document.getElementById('poolDistance');
+  const pt = document.getElementById('poolTime');
+  if(pd) pd.addEventListener('input', ()=>{ dayData.pool.distance = pd.value; queueSave(); });
+  if(pt) pt.addEventListener('input', ()=>{ dayData.pool.time = pt.value; queueSave(); });
+
+  document.querySelectorAll('[data-watchid]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      dayData.watch[el.dataset.watchid] = el.checked;
+      queueSave();
+    });
+  });
+
+  const prot = document.getElementById('proteinInput');
+  if(prot) prot.addEventListener('input', ()=>{
+    dayData.protein = prot.value;
+    updateProteinBar();
+    queueSave();
+  });
+
+  const notes = document.getElementById('notesInput');
+  if(notes) notes.addEventListener('input', ()=>{
+    dayData.notes = notes.value;
+    queueSave();
+  });
+}
+
+async function init(){
+  await loadSettings();
+  const today = new Date(); today.setHours(0,0,0,0);
+  document.getElementById('startDate').value = fmtDate(startDate);
+  document.getElementById('startDate').addEventListener('change', async (e)=>{
+    startDate = new Date(e.target.value+'T00:00:00');
+    await saveSettings();
+    await buildLanes();
+    const todayNum = dayNumberFromDate(today);
+    await selectDay(Math.min(Math.max(todayNum,1),90));
+    markLoggedDots();
+  });
+
+  document.getElementById('jumpToday').addEventListener('click', async ()=>{
+    const n = dayNumberFromDate(new Date(new Date().setHours(0,0,0,0)));
+    await selectDay(Math.min(Math.max(n,1),90));
+  });
+
+  await buildLanes();
+  const todayNum = dayNumberFromDate(today);
+  const clamped = Math.min(Math.max(todayNum,1),90);
+  document.getElementById('subhead').innerHTML = todayNum>=1 && todayNum<=90
+    ? `You're on <b>Day ${todayNum}</b> of 90. Wake up, open this, do what's on the card.`
+    : (todayNum<1 ? `Plan starts <b>${startDate.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>.` : `Plan complete — nice work.`);
+  await selectDay(clamped);
+  scrollActiveIntoView();
+  markLoggedDots();
+  if(storageBroken){
+    const sub = document.getElementById('subhead');
+    sub.innerHTML += `<br><span style="color:var(--rust)">⚠ This browser is blocking local storage (private/incognito mode?), so nothing you log will be saved. Try a normal browser window.</span>`;
+  }
+}
+init();
+</script>
+</body>
+</html>
