@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>90-Day Log</title>
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -194,6 +195,26 @@
   .watch-item input[type=checkbox]{
     width:17px;height:17px;accent-color:var(--sage);flex:0 0 17px;
   }
+
+  .meals-log{display:flex;flex-direction:column;gap:12px;}
+  .meal-block{background:var(--panel-2);border-radius:10px;padding:12px 14px;}
+  .meal-block-label{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--chalk-dim);margin-bottom:8px;}
+  .meal-desc{
+    width:100%;background:var(--ink);border:1px solid var(--line);color:var(--chalk);
+    font-family:'Inter',sans-serif;font-size:13px;border-radius:8px;padding:8px 10px;margin-bottom:8px;
+  }
+  .meal-desc::placeholder{color:var(--chalk-faint);}
+  .macro-row{display:flex;gap:8px;}
+  .macro-field{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .macro-field input{
+    width:100%;background:var(--ink);border:1px solid var(--line);color:var(--chalk);
+    font-family:'JetBrains Mono',monospace;font-size:13px;text-align:center;border-radius:8px;padding:7px 4px;
+  }
+  .macro-field span{font-size:10px;color:var(--chalk-faint);font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
+  .totals-box{background:var(--panel-2);border-radius:10px;padding:14px 16px;margin-top:12px;}
+  .totals-row{display:flex;align-items:center;gap:8px;font-size:13.5px;}
+  .totals-row b{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--chalk);}
+  .totals-row .of{color:var(--chalk-dim);font-family:'JetBrains Mono',monospace;font-size:12px;margin-left:-4px;}
 
   .protein-row{display:flex;align-items:center;gap:10px;}
   .protein-row input{
@@ -406,6 +427,19 @@ const EX_DESC = {
   'Trap Bar Deadlift': 'Stand inside a trap/hex bar, grip the handles, and lift by driving through your legs and extending your hips, keeping your back flat.'
 };
 
+const MEAL_SLOTS = [
+  {id:'breakfast', label:'Breakfast'},
+  {id:'lunch', label:'Lunch'},
+  {id:'dinner', label:'Dinner'},
+  {id:'snacks', label:'Snacks'}
+];
+
+function emptyNutrition(){
+  const n = {};
+  MEAL_SLOTS.forEach(s=>{ n[s.id] = {desc:'', protein:'', carbs:'', fat:''}; });
+  return n;
+}
+
 const WATCHPOINTS = [
   {id:'rib', label:'Rib pain today? (location / trigger / deep-breath pain)'},
   {id:'hiplimp', label:'Any hip limp on dog walks?'},
@@ -429,13 +463,30 @@ let startDate = null;
 let selectedDay = 1;
 let dayData = {};
 let saveTimer = null;
+let PROGRAM_DATES = [];
+
+const TRAVEL_RANGES = [
+  {start:'2026-09-09', end:'2026-09-19', label:'Europe trip'}
+];
 
 function pad(n){return n<10?'0'+n:''+n;}
 function fmtDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function isTravelDate(d){
+  const key = fmtDate(d);
+  return TRAVEL_RANGES.some(r => key >= r.start && key <= r.end);
+}
+function rebuildProgramDates(){
+  PROGRAM_DATES = [];
+  let cursor = new Date(startDate);
+  let guard = 0;
+  while(PROGRAM_DATES.length < 90 && guard < 400){
+    if(!isTravelDate(cursor)) PROGRAM_DATES.push(new Date(cursor));
+    cursor = new Date(cursor); cursor.setDate(cursor.getDate()+1);
+    guard++;
+  }
+}
 function dateForDay(n){
-  const d = new Date(startDate);
-  d.setDate(d.getDate() + (n-1));
-  return d;
+  return PROGRAM_DATES[n-1] || new Date(startDate);
 }
 function phaseForDay(n){
   if(n<=30) return PHASES.endurance;
@@ -460,6 +511,7 @@ async function loadSettings(){
     }
   }catch(e){ storageBroken = true; }
   if(!startDate){ startDate = new Date(); startDate.setHours(0,0,0,0); }
+  rebuildProgramDates();
 }
 async function saveSettings(){
   try{ localStorage.setItem(STORE_PREFIX+'settings', JSON.stringify({startDate: fmtDate(startDate)})); }catch(e){ storageBroken = true; }
@@ -468,9 +520,15 @@ async function saveSettings(){
 async function loadDay(n){
   try{
     const raw = localStorage.getItem(STORE_PREFIX+'day:'+n);
-    if(raw) return JSON.parse(raw);
+    if(raw){
+      const d = JSON.parse(raw);
+      if(!d.nutrition) d.nutrition = emptyNutrition();
+      if(!d.watch) d.watch = {};
+      if(!d.pool) d.pool = {distance:'',time:''};
+      return d;
+    }
   }catch(e){ storageBroken = true; }
-  return {exercises:{}, pool:{distance:'',time:''}, watch:{}, protein:'', notes:'', restDone:false};
+  return {exercises:{}, pool:{distance:'',time:''}, watch:{}, nutrition: emptyNutrition(), notes:'', restDone:false};
 }
 async function saveDay(n, data){
   try{
@@ -492,8 +550,12 @@ function flashSaved(){
 }
 
 function dayNumberFromDate(d){
-  const diff = Math.round((d - startDate)/86400000) + 1;
-  return diff;
+  if(isTravelDate(d)) return -1;
+  const key = fmtDate(d);
+  for(let i=0;i<PROGRAM_DATES.length;i++){
+    if(fmtDate(PROGRAM_DATES[i]) === key) return i+1;
+  }
+  return d < PROGRAM_DATES[0] ? 0 : 91;
 }
 
 async function buildLanes(){
@@ -545,6 +607,12 @@ function markLoggedDots(){
 function scrollActiveIntoView(){
   const el = document.querySelector('.cell.active');
   if(el) el.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'});
+}
+
+function showTravelCard(){
+  const card = document.getElementById('dayCard');
+  card.innerHTML = `<div class="card-head"><div class="day-title">Traveling</div></div>
+    <div class="date-line">No training scheduled during the trip — pick a day from the calendar above to review or log anything, or just enjoy the trip and come back to this when you're home.</div>`;
 }
 
 async function selectDay(n){
@@ -638,12 +706,28 @@ function renderCard(){
   });
   html += `</div>`;
 
-  html += `<div class="section-label">Protein (target 160g)</div>
-    <div class="protein-row">
-      <input type="text" inputmode="numeric" id="proteinInput" placeholder="0" value="${escapeAttr(dayData.protein||'')}">
-      <span class="of">/ 160g</span>
-    </div>
-    <div class="protein-bar"><div class="protein-bar-fill" id="proteinBar"></div></div>`;
+  html += `<div class="section-label">Nutrition — tell me what you ate and I'll estimate, or fill it in yourself</div>
+    <div class="meals-log">`;
+  MEAL_SLOTS.forEach(slot=>{
+    const m = dayData.nutrition[slot.id] || {desc:'',protein:'',carbs:'',fat:''};
+    html += `<div class="meal-block">
+      <div class="meal-block-label">${slot.label}</div>
+      <input type="text" class="meal-desc" data-meal="${slot.id}" placeholder="What did you eat? (optional)" value="${escapeAttr(m.desc)}">
+      <div class="macro-row">
+        <div class="macro-field"><input type="text" inputmode="decimal" class="macro-input" data-meal="${slot.id}" data-macro="protein" placeholder="0" value="${escapeAttr(m.protein)}"><span>protein g</span></div>
+        <div class="macro-field"><input type="text" inputmode="decimal" class="macro-input" data-meal="${slot.id}" data-macro="carbs" placeholder="0" value="${escapeAttr(m.carbs)}"><span>carbs g</span></div>
+        <div class="macro-field"><input type="text" inputmode="decimal" class="macro-input" data-meal="${slot.id}" data-macro="fat" placeholder="0" value="${escapeAttr(m.fat)}"><span>fat g</span></div>
+      </div>
+    </div>`;
+  });
+  html += `</div>
+    <div class="totals-box">
+      <div class="totals-row"><span>Protein</span><b id="totalProtein">0</b><span class="of">/ 160g</span></div>
+      <div class="protein-bar"><div class="protein-bar-fill" id="proteinBar"></div></div>
+      <div class="totals-row" style="margin-top:10px;"><span>Carbs</span><b id="totalCarbs">0</b><span class="of">g</span></div>
+      <div class="totals-row"><span>Fat</span><b id="totalFat">0</b><span class="of">g</span></div>
+      <div class="totals-row"><span>Est. calories</span><b id="totalCals">0</b><span class="of">kcal</span></div>
+    </div>`;
 
   html += `<div class="section-label">Notes</div>
     <textarea id="notesInput" placeholder="Anything worth remembering from today...">${escapeHTML(dayData.notes||'')}</textarea>`;
@@ -651,16 +735,28 @@ function renderCard(){
   html += `<div class="save-status" id="saveStatus"></div>`;
 
   card.innerHTML = html;
-  updateProteinBar();
+  updateNutritionTotals();
   wireCardEvents();
 }
 
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHTML(s); }
 
-function updateProteinBar(){
-  const val = parseFloat(dayData.protein)||0;
-  const pct = Math.max(0, Math.min(100, (val/160)*100));
+function updateNutritionTotals(){
+  let p=0, c=0, f=0;
+  MEAL_SLOTS.forEach(slot=>{
+    const m = dayData.nutrition[slot.id] || {};
+    p += parseFloat(m.protein)||0;
+    c += parseFloat(m.carbs)||0;
+    f += parseFloat(m.fat)||0;
+  });
+  const cals = Math.round(p*4 + c*4 + f*9);
+  const setText = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
+  setText('totalProtein', Math.round(p*10)/10);
+  setText('totalCarbs', Math.round(c*10)/10);
+  setText('totalFat', Math.round(f*10)/10);
+  setText('totalCals', cals);
+  const pct = Math.max(0, Math.min(100, (p/160)*100));
   const bar = document.getElementById('proteinBar');
   if(bar) bar.style.width = pct+'%';
 }
@@ -703,11 +799,22 @@ function wireCardEvents(){
     });
   });
 
-  const prot = document.getElementById('proteinInput');
-  if(prot) prot.addEventListener('input', ()=>{
-    dayData.protein = prot.value;
-    updateProteinBar();
-    queueSave();
+  document.querySelectorAll('.meal-desc').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const meal = el.dataset.meal;
+      dayData.nutrition[meal] = dayData.nutrition[meal] || {desc:'',protein:'',carbs:'',fat:''};
+      dayData.nutrition[meal].desc = el.value;
+      queueSave();
+    });
+  });
+  document.querySelectorAll('.macro-input').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const meal = el.dataset.meal, macro = el.dataset.macro;
+      dayData.nutrition[meal] = dayData.nutrition[meal] || {desc:'',protein:'',carbs:'',fat:''};
+      dayData.nutrition[meal][macro] = el.value;
+      updateNutritionTotals();
+      queueSave();
+    });
   });
 
   const notes = document.getElementById('notesInput');
@@ -731,8 +838,9 @@ function buildExportText(){
     let d;
     try{ d = JSON.parse(raw); }catch(e){ continue; }
     const hasLog = Object.keys(d.exercises||{}).some(k=>d.exercises[k].done || d.exercises[k].weight) ||
-                   (d.pool && (d.pool.distance||d.pool.time)) || d.protein || d.notes ||
-                   Object.values(d.watch||{}).some(Boolean);
+                   (d.pool && (d.pool.distance||d.pool.time)) ||
+                   (d.nutrition && Object.values(d.nutrition).some(m=>m.desc||m.protein||m.carbs||m.fat)) ||
+                   d.notes || Object.values(d.watch||{}).some(Boolean);
     if(!hasLog) continue;
     anyLogged = true;
     const {date, plan, phase} = planForDay(n);
@@ -754,7 +862,20 @@ function buildExportText(){
     if(watchHits.length){
       lines.push('  Watch points flagged: ' + watchHits.map(w=>w.label).join('; '));
     }
-    if(d.protein){ lines.push('  Protein logged: ' + d.protein + 'g'); }
+    if(d.protein){ lines.push('  Protein logged (legacy): ' + d.protein + 'g'); }
+    if(d.nutrition){
+      let totP=0, totC=0, totF=0;
+      MEAL_SLOTS.forEach(slot=>{
+        const m = d.nutrition[slot.id];
+        if(m && (m.desc||m.protein||m.carbs||m.fat)){
+          lines.push('  ' + slot.label + ': ' + (m.desc||'—') + (m.protein?' | P:'+m.protein+'g':'') + (m.carbs?' C:'+m.carbs+'g':'') + (m.fat?' F:'+m.fat+'g':''));
+          totP += parseFloat(m.protein)||0; totC += parseFloat(m.carbs)||0; totF += parseFloat(m.fat)||0;
+        }
+      });
+      if(totP||totC||totF){
+        lines.push('  Daily totals: ' + totP + 'g protein, ' + totC + 'g carbs, ' + totF + 'g fat (~' + Math.round(totP*4+totC*4+totF*9) + ' kcal)');
+      }
+    }
     if(d.notes){ lines.push('  Notes: ' + d.notes); }
   }
   if(!anyLogged){ lines.push(''); lines.push('(No days logged yet.)'); }
@@ -806,25 +927,29 @@ async function init(){
   document.getElementById('startDate').addEventListener('change', async (e)=>{
     startDate = new Date(e.target.value+'T00:00:00');
     await saveSettings();
+    rebuildProgramDates();
     await buildLanes();
     const todayNum = dayNumberFromDate(today);
-    await selectDay(Math.min(Math.max(todayNum,1),90));
+    if(todayNum === -1){ showTravelCard(); } else { await selectDay(Math.min(Math.max(todayNum,1),90)); }
     markLoggedDots();
   });
 
   document.getElementById('jumpToday').addEventListener('click', async ()=>{
     const n = dayNumberFromDate(new Date(new Date().setHours(0,0,0,0)));
-    await selectDay(Math.min(Math.max(n,1),90));
+    if(n === -1){ showTravelCard(); } else { await selectDay(Math.min(Math.max(n,1),90)); }
   });
 
   await buildLanes();
   wireExportControls();
   const todayNum = dayNumberFromDate(today);
+  const isTravelToday = todayNum === -1;
   const clamped = Math.min(Math.max(todayNum,1),90);
-  document.getElementById('subhead').innerHTML = todayNum>=1 && todayNum<=90
-    ? `You're on <b>Day ${todayNum}</b> of 90. Wake up, open this, do what's on the card.`
-    : (todayNum<1 ? `Plan starts <b>${startDate.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>.` : `Plan complete — nice work.`);
-  await selectDay(clamped);
+  document.getElementById('subhead').innerHTML = isTravelToday
+    ? `Traveling right now — no training scheduled. Programming picks back up when you're back.`
+    : (todayNum>=1 && todayNum<=90
+      ? `You're on <b>Day ${todayNum}</b> of 90. Wake up, open this, do what's on the card.`
+      : (todayNum<1 ? `Plan starts <b>${startDate.toLocaleDateString('en-US',{month:'long',day:'numeric'})}</b>.` : `Plan complete — nice work.`));
+  if(isTravelToday){ showTravelCard(); } else { await selectDay(clamped); }
   scrollActiveIntoView();
   markLoggedDots();
   if(storageBroken){
