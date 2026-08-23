@@ -246,6 +246,17 @@
       <button id="jumpToday">Jump to today</button>
       <input type="date" id="startDate">
       <span style="font-size:11px;color:var(--chalk-faint);font-family:'JetBrains Mono',monospace;align-self:center;">← plan start date</span>
+      <button id="exportLog" style="margin-left:auto;">Export log</button>
+    </div>
+  </div>
+
+  <div class="card" id="exportCard" style="display:none;">
+    <div class="section-label">Export — copy this and send it to Claude</div>
+    <textarea id="exportText" readonly style="min-height:260px;font-family:'JetBrains Mono',monospace;font-size:12px;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button id="copyExport" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--line);color:var(--chalk-dim);padding:8px 12px;border-radius:8px;cursor:pointer;">Copy to clipboard</button>
+      <button id="downloadExport" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--line);color:var(--chalk-dim);padding:8px 12px;border-radius:8px;cursor:pointer;">Download .txt</button>
+      <button id="closeExport" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:none;border:1px solid var(--line);color:var(--chalk-dim);padding:8px 12px;border-radius:8px;cursor:pointer;margin-left:auto;">Close</button>
     </div>
   </div>
 
@@ -706,6 +717,87 @@ function wireCardEvents(){
   });
 }
 
+function buildExportText(){
+  const lines = [];
+  lines.push('90-DAY PLAN — PROGRESS EXPORT');
+  lines.push('Generated: ' + new Date().toLocaleString('en-US'));
+  lines.push('Plan start date: ' + fmtDate(startDate));
+  lines.push('='.repeat(50));
+  let anyLogged = false;
+  for(let n=1;n<=90;n++){
+    let raw;
+    try{ raw = localStorage.getItem(STORE_PREFIX+'day:'+n); }catch(e){ raw = null; }
+    if(!raw) continue;
+    let d;
+    try{ d = JSON.parse(raw); }catch(e){ continue; }
+    const hasLog = Object.keys(d.exercises||{}).some(k=>d.exercises[k].done || d.exercises[k].weight) ||
+                   (d.pool && (d.pool.distance||d.pool.time)) || d.protein || d.notes ||
+                   Object.values(d.watch||{}).some(Boolean);
+    if(!hasLog) continue;
+    anyLogged = true;
+    const {date, plan, phase} = planForDay(n);
+    lines.push('');
+    lines.push('DAY ' + n + ' — ' + date.toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric'}) + ' — ' + phase.label + (plan.type==='gym' ? ' — ' + plan.label : ' — ' + (plan.label||'Pool/Rest')));
+    if(plan.type==='gym'){
+      const list = EXERCISES[phase.key][plan.slot];
+      list.forEach(ex=>{
+        const saved = d.exercises[ex.id];
+        if(saved && (saved.done || saved.weight)){
+          lines.push('  - ' + ex.name + ': ' + ex.sets + ' @ ' + ex.rpe + (saved.weight ? ' | weight used: ' + saved.weight + 'lb' : '') + (saved.done ? ' | completed' : ' | logged, not marked done'));
+        }
+      });
+    }
+    if(d.pool && (d.pool.distance || d.pool.time)){
+      lines.push('  Pool: ' + (d.pool.distance||'—') + (d.pool.time ? ' | time: '+d.pool.time : ''));
+    }
+    const watchHits = WATCHPOINTS.filter(w=>d.watch && d.watch[w.id]);
+    if(watchHits.length){
+      lines.push('  Watch points flagged: ' + watchHits.map(w=>w.label).join('; '));
+    }
+    if(d.protein){ lines.push('  Protein logged: ' + d.protein + 'g'); }
+    if(d.notes){ lines.push('  Notes: ' + d.notes); }
+  }
+  if(!anyLogged){ lines.push(''); lines.push('(No days logged yet.)'); }
+  return lines.join('\n');
+}
+
+function wireExportControls(){
+  const btn = document.getElementById('exportLog');
+  const card = document.getElementById('exportCard');
+  const dayCard = document.getElementById('dayCard');
+  const textEl = document.getElementById('exportText');
+  btn.addEventListener('click', ()=>{
+    textEl.value = buildExportText();
+    card.style.display = 'block';
+    dayCard.style.display = 'none';
+    textEl.focus();
+    textEl.select();
+  });
+  document.getElementById('closeExport').addEventListener('click', ()=>{
+    card.style.display = 'none';
+    dayCard.style.display = 'block';
+  });
+  document.getElementById('copyExport').addEventListener('click', async ()=>{
+    try{
+      await navigator.clipboard.writeText(textEl.value);
+      const b = document.getElementById('copyExport');
+      const old = b.textContent; b.textContent = 'Copied!';
+      setTimeout(()=>{ b.textContent = old; }, 1500);
+    }catch(e){
+      textEl.select();
+      document.execCommand('copy');
+    }
+  });
+  document.getElementById('downloadExport').addEventListener('click', ()=>{
+    const blob = new Blob([textEl.value], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = '90-day-plan-export.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}
+
 async function init(){
   await loadSettings();
   await saveSettings();
@@ -726,6 +818,7 @@ async function init(){
   });
 
   await buildLanes();
+  wireExportControls();
   const todayNum = dayNumberFromDate(today);
   const clamped = Math.min(Math.max(todayNum,1),90);
   document.getElementById('subhead').innerHTML = todayNum>=1 && todayNum<=90
