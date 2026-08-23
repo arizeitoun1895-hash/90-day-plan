@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>90-Day Log</title><link rel="apple-touch-icon" href="icon-180.png">
+<title>90-Day Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -204,54 +204,6 @@
   .protein-row .of{color:var(--chalk-dim);font-family:'JetBrains Mono',monospace;font-size:13px;}
   .protein-bar{height:6px;border-radius:3px;background:var(--panel-2);margin-top:8px;overflow:hidden;}
   .protein-bar-fill{height:100%;background:var(--sage);width:0%;transition:width .2s;}
-
-  /* Meal logging */
-  .meal-block{margin-bottom:14px;}
-  .meal-block:last-child{margin-bottom:0;}
-  .meal-label{
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-    color:var(--chalk-dim);margin-bottom:6px;
-  }
-  .meal-block textarea{min-height:44px;font-size:13.5px;}
-  .macro-estimate{
-    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--chalk-dim);
-    margin-top:6px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
-  }
-  .macro-estimate.empty{color:var(--chalk-faint);}
-  .macro-adjust{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
-  .macro-adjust label{
-    display:flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--chalk-faint);
-  }
-  .macro-adjust input{
-    width:52px;background:var(--panel-2);border:1px solid var(--line);color:var(--chalk);
-    font-family:'JetBrains Mono',monospace;font-size:12px;text-align:center;
-    border-radius:6px;padding:5px 3px;
-  }
-  .macro-unrecognized{color:var(--rust);font-size:11px;margin-top:4px;font-family:'JetBrains Mono',monospace;}
-
-  .totals-box{
-    background:var(--panel-2);border-radius:10px;padding:14px 16px;margin-top:4px;
-  }
-  .totals-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  @media (max-width:480px){.totals-grid{grid-template-columns:1fr;}}
-  .totals-item .t-head{
-    display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11.5px;
-    color:var(--chalk-dim);margin-bottom:4px;
-  }
-  .totals-item .t-head b{color:var(--chalk);font-weight:600;}
-  .totals-bar{height:6px;border-radius:3px;background:var(--ink);overflow:hidden;}
-  .totals-bar-fill{height:100%;background:var(--pool);transition:width .2s;}
-  .totals-bar-fill.protein{background:var(--sage);}
-  .totals-bar-fill.fat{background:var(--gold);}
-  .totals-bar-fill.carbs{background:var(--rust);}
-
-  .export-row{display:flex;justify-content:flex-end;margin-top:4px;}
-  .export-btn{
-    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-    background:none;border:1px solid var(--line);color:var(--chalk-dim);
-    padding:6px 10px;border-radius:8px;cursor:pointer;
-  }
-  .export-btn:hover{border-color:var(--chalk-faint);color:var(--chalk);}
 
   textarea{
     width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--chalk);
@@ -462,92 +414,6 @@ const DOW_PLAN = {
   0:{type:'restpool', label:'Pool (AM) or Rest'}
 };
 
-const TARGETS = { cal:2400, protein:160, fat:73, carbs:270 };
-
-// Rough macro estimates per typical serving. This is a heuristic estimator, not a nutrition database —
-// good enough to track trends against targets, not lab-accurate.
-const FOOD_DB = [
-  {kw:['greek yogurt','plain yogurt','yogurt'], cal:150, p:20, f:4, c:8},
-  {kw:['banana'], cal:105, p:1, f:0, c:27},
-  {kw:['walnuts','walnut'], cal:185, p:4, f:18, c:4},
-  {kw:['veggie egg scramble','egg scramble','veggie scramble'], cal:280, p:20, f:18, c:6},
-  {kw:['egg'], cal:70, p:6, f:5, c:0.5},
-  {kw:['chicken shawarma','shawarma chicken','shawarma'], cal:400, p:40, f:20, c:10},
-  {kw:['grilled chicken','chicken breast'], cal:280, p:53, f:6, c:0},
-  {kw:['chicken thigh'], cal:340, p:42, f:18, c:0},
-  {kw:['chicken'], cal:300, p:45, f:12, c:0},
-  {kw:['za\'atar salmon','salmon'], cal:350, p:40, f:20, c:0},
-  {kw:['shrimp tempura','shrimp'], cal:200, p:36, f:3, c:2},
-  {kw:['quinoa tabbouleh','tabbouleh'], cal:120, p:3, f:7, c:14},
-  {kw:['quinoa'], cal:220, p:8, f:4, c:39},
-  {kw:['hummus'], cal:70, p:2, f:5, c:6},
-  {kw:['greek salad'], cal:180, p:6, f:14, c:9},
-  {kw:['feta'], cal:75, p:4, f:6, c:1},
-  {kw:['pita'], cal:165, p:5, f:1, c:33},
-  {kw:['kofta'], cal:300, p:25, f:20, c:3},
-  {kw:['brown rice','white rice','rice'], cal:205, p:4, f:0.5, c:45},
-  {kw:['avocado'], cal:240, p:3, f:22, c:13},
-  {kw:['protein shake','protein powder','whey shake','whey'], cal:130, p:25, f:2, c:4},
-  {kw:['milk'], cal:120, p:8, f:5, c:12},
-  {kw:['olive oil'], cal:120, p:0, f:14, c:0},
-  {kw:['tortilla'], cal:140, p:4, f:3, c:24},
-  {kw:['spicy tuna roll'], cal:290, p:15, f:11, c:34},
-  {kw:['california roll','sushi roll','sushi'], cal:255, p:9, f:7, c:38},
-  {kw:['oatmeal'], cal:150, p:5, f:3, c:27},
-  {kw:['almonds'], cal:165, p:6, f:14, c:6},
-  {kw:['peanut butter'], cal:95, p:4, f:8, c:3},
-  {kw:['cheddar','cheese'], cal:115, p:7, f:9, c:0.5},
-  {kw:['tuna'], cal:120, p:26, f:1, c:0},
-  {kw:['ground beef','steak','beef'], cal:470, p:42, f:32, c:0},
-  {kw:['pork'], cal:370, p:44, f:20, c:0},
-  {kw:['salad'], cal:100, p:3, f:6, c:9},
-  {kw:['tomato'], cal:22, p:1, f:0, c:5},
-  {kw:['cucumber'], cal:45, p:2, f:0, c:11},
-  {kw:['pasta'], cal:220, p:8, f:1, c:43},
-  {kw:['sweet potato'], cal:115, p:2, f:0, c:27},
-  {kw:['potato'], cal:160, p:4, f:0, c:37},
-  {kw:['broccoli'], cal:55, p:4, f:0.5, c:11},
-  {kw:['spinach'], cal:7, p:1, f:0, c:1},
-  {kw:['toast','bread'], cal:80, p:3, f:1, c:14},
-  {kw:['black coffee','coffee'], cal:2, p:0, f:0, c:0}
-];
-// Longest keyword first so "spicy tuna roll" matches before "tuna"
-const FOOD_DB_SORTED = FOOD_DB.slice().sort((a,b)=>{
-  const la = Math.max(...a.kw.map(k=>k.length));
-  const lb = Math.max(...b.kw.map(k=>k.length));
-  return lb-la;
-});
-
-function parseQty(chunk){
-  const m = chunk.match(/^(\d+(\.\d+)?)\s*/);
-  if(m) return {qty:parseFloat(m[1]), rest:chunk.slice(m[0].length)};
-  const frac = chunk.match(/^(\d+)\/(\d+)\s*/);
-  if(frac) return {qty:parseInt(frac[1])/parseInt(frac[2]), rest:chunk.slice(frac[0].length)};
-  return {qty:1, rest:chunk};
-}
-
-function estimateMacros(text){
-  const totals = {cal:0,p:0,f:0,c:0};
-  const unmatched = [];
-  if(!text || !text.trim()) return {...totals, unmatched};
-  const items = text.split(/,|\n|;|\band\b|\bover\b|\bwith\b|\bplus\b/i).map(s=>s.trim()).filter(Boolean);
-  items.forEach(item=>{
-    const {qty, rest} = parseQty(item.toLowerCase());
-    const found = FOOD_DB_SORTED.find(f => f.kw.some(k => rest.includes(k)));
-    if(found){
-      totals.cal += found.cal*qty;
-      totals.p += found.p*qty;
-      totals.f += found.f*qty;
-      totals.c += found.c*qty;
-    } else {
-      unmatched.push(item);
-    }
-  });
-  return {cal:Math.round(totals.cal), p:Math.round(totals.p), f:Math.round(totals.f), c:Math.round(totals.c), unmatched};
-}
-
-function emptyMeal(){ return {text:'', cal:'', p:'', f:'', c:''}; }
-
 let startDate = null;
 let selectedDay = 1;
 let dayData = {};
@@ -591,14 +457,9 @@ async function saveSettings(){
 async function loadDay(n){
   try{
     const raw = localStorage.getItem(STORE_PREFIX+'day:'+n);
-    if(raw){
-      const d = JSON.parse(raw);
-      d.meals = d.meals || {breakfast:emptyMeal(), lunch:emptyMeal(), dinner:emptyMeal(), snacks:emptyMeal()};
-      return d;
-    }
+    if(raw) return JSON.parse(raw);
   }catch(e){ storageBroken = true; }
-  return {exercises:{}, pool:{distance:'',time:''}, watch:{}, protein:'', notes:'', restDone:false,
-    meals:{breakfast:emptyMeal(), lunch:emptyMeal(), dinner:emptyMeal(), snacks:emptyMeal()}};
+  return {exercises:{}, pool:{distance:'',time:''}, watch:{}, protein:'', notes:'', restDone:false};
 }
 async function saveDay(n, data){
   try{
@@ -630,6 +491,7 @@ async function buildLanes(){
   const today = new Date(); today.setHours(0,0,0,0);
   const todayNum = dayNumberFromDate(today);
 
+  // pre-check which days have logs (cheap best-effort; skip errors silently)
   let group;
   for(let n=1;n<=90;n++){
     if((n-1)%7===0){
@@ -661,9 +523,8 @@ function markLoggedDots(){
       const raw = localStorage.getItem(STORE_PREFIX+'day:'+n);
       if(raw){
         const d = JSON.parse(raw);
-        const hasMeals = d.meals && Object.values(d.meals).some(m=>m && m.text && m.text.trim());
         const hasLog = Object.keys(d.exercises||{}).some(k=>d.exercises[k].done || d.exercises[k].weight) ||
-                       (d.pool && (d.pool.distance||d.pool.time)) || d.protein || d.notes || hasMeals;
+                       (d.pool && (d.pool.distance||d.pool.time)) || d.protein || d.notes;
         if(hasLog) cell.classList.add('logged');
       }
     }catch(e){}
@@ -766,92 +627,32 @@ function renderCard(){
   });
   html += `</div>`;
 
-  html += `<div class="section-label">Meals</div>`;
-  const MEAL_KEYS = [['breakfast','Breakfast'],['lunch','Lunch'],['dinner','Dinner'],['snacks','Snacks / shakes']];
-  MEAL_KEYS.forEach(([key,label])=>{
-    const meal = dayData.meals[key] || emptyMeal();
-    html += mealBlockHTML(key, label, meal);
-  });
-
-  html += `<div class="section-label">Today's totals</div>
-    <div class="totals-box" id="totalsBox"></div>`;
+  html += `<div class="section-label">Protein (target 160g)</div>
+    <div class="protein-row">
+      <input type="text" inputmode="numeric" id="proteinInput" placeholder="0" value="${escapeAttr(dayData.protein||'')}">
+      <span class="of">/ 160g</span>
+    </div>
+    <div class="protein-bar"><div class="protein-bar-fill" id="proteinBar"></div></div>`;
 
   html += `<div class="section-label">Notes</div>
     <textarea id="notesInput" placeholder="Anything worth remembering from today...">${escapeHTML(dayData.notes||'')}</textarea>`;
 
-  html += `<div class="save-status" id="saveStatus"></div>
-    <div class="export-row"><button class="export-btn" id="exportBtn">Export log ⤓</button></div>`;
+  html += `<div class="save-status" id="saveStatus"></div>`;
 
   card.innerHTML = html;
-  renderTotals();
+  updateProteinBar();
   wireCardEvents();
-}
-
-function mealBlockHTML(key, label, meal){
-  return `<div class="meal-block" data-meal="${key}">
-    <div class="meal-label">${label}</div>
-    <textarea id="meal-${key}" placeholder="e.g. greek yogurt, banana, walnuts">${escapeHTML(meal.text||'')}</textarea>
-    <div class="macro-estimate" id="est-${key}"></div>
-    <div class="macro-adjust">
-      <label>kcal <input type="text" inputmode="numeric" data-mealfield="cal" data-meal="${key}" value="${escapeAttr(meal.cal)}"></label>
-      <label>P <input type="text" inputmode="numeric" data-mealfield="p" data-meal="${key}" value="${escapeAttr(meal.p)}"></label>
-      <label>F <input type="text" inputmode="numeric" data-mealfield="f" data-meal="${key}" value="${escapeAttr(meal.f)}"></label>
-      <label>C <input type="text" inputmode="numeric" data-mealfield="c" data-meal="${key}" value="${escapeAttr(meal.c)}"></label>
-    </div>
-  </div>`;
-}
-
-function refreshMealEstimate(key){
-  const meal = dayData.meals[key];
-  const estBox = document.getElementById('est-'+key);
-  if(!meal.text || !meal.text.trim()){
-    if(estBox){ estBox.className='macro-estimate empty'; estBox.textContent='Estimate will appear here as you type'; }
-    return;
-  }
-  const est = estimateMacros(meal.text);
-  if(estBox){
-    estBox.className='macro-estimate';
-    estBox.innerHTML = `≈ ${est.cal} kcal · ${est.p}g protein · ${est.f}g fat · ${est.c}g carbs`
-      + (est.unmatched.length ? `<div class="macro-unrecognized">Not recognized: ${escapeHTML(est.unmatched.join(', '))} — adjust numbers manually</div>` : '');
-  }
-  meal.cal = est.cal; meal.p = est.p; meal.f = est.f; meal.c = est.c;
-}
-
-function dayTotals(){
-  const t = {cal:0,p:0,f:0,c:0};
-  Object.values(dayData.meals||{}).forEach(m=>{
-    t.cal += parseFloat(m.cal)||0;
-    t.p += parseFloat(m.p)||0;
-    t.f += parseFloat(m.f)||0;
-    t.c += parseFloat(m.c)||0;
-  });
-  return t;
-}
-
-function renderTotals(){
-  const box = document.getElementById('totalsBox');
-  if(!box) return;
-  const t = dayTotals();
-  const rows = [
-    ['cal','Calories', t.cal, TARGETS.cal, ''],
-    ['protein','Protein', t.p, TARGETS.protein, 'g'],
-    ['fat','Fat', t.f, TARGETS.fat, 'g'],
-    ['carbs','Carbs', t.c, TARGETS.carbs, 'g']
-  ];
-  let html = '<div class="totals-grid">';
-  rows.forEach(([cls,label,val,target,unit])=>{
-    const pct = Math.max(0, Math.min(100, (val/target)*100));
-    html += `<div class="totals-item">
-      <div class="t-head"><span>${label}</span><b>${Math.round(val)}${unit} / ${target}${unit}</b></div>
-      <div class="totals-bar"><div class="totals-bar-fill ${cls==='cal'?'':cls}" style="width:${pct}%"></div></div>
-    </div>`;
-  });
-  html += '</div>';
-  box.innerHTML = html;
 }
 
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function escapeAttr(s){ return escapeHTML(s); }
+
+function updateProteinBar(){
+  const val = parseFloat(dayData.protein)||0;
+  const pct = Math.max(0, Math.min(100, (val/160)*100));
+  const bar = document.getElementById('proteinBar');
+  if(bar) bar.style.width = pct+'%';
+}
 
 function wireCardEvents(){
   document.querySelectorAll('.ex-toggle').forEach(el=>{
@@ -891,56 +692,23 @@ function wireCardEvents(){
     });
   });
 
+  const prot = document.getElementById('proteinInput');
+  if(prot) prot.addEventListener('input', ()=>{
+    dayData.protein = prot.value;
+    updateProteinBar();
+    queueSave();
+  });
+
   const notes = document.getElementById('notesInput');
   if(notes) notes.addEventListener('input', ()=>{
     dayData.notes = notes.value;
     queueSave();
   });
-
-  Object.keys(dayData.meals||{}).forEach(key=>{
-    const ta = document.getElementById('meal-'+key);
-    if(ta) ta.addEventListener('input', ()=>{
-      dayData.meals[key].text = ta.value;
-      refreshMealEstimate(key);
-      renderTotals();
-      queueSave();
-    });
-    refreshMealEstimate(key);
-  });
-  document.querySelectorAll('[data-mealfield]').forEach(el=>{
-    el.addEventListener('input', ()=>{
-      const key = el.dataset.meal, field = el.dataset.mealfield;
-      dayData.meals[key][field] = el.value === '' ? '' : (parseFloat(el.value)||0);
-      renderTotals();
-      queueSave();
-    });
-  });
-
-  const exportBtn = document.getElementById('exportBtn');
-  if(exportBtn) exportBtn.addEventListener('click', exportLog);
-}
-
-function exportLog(){
-  const data = {settings:{startDate: fmtDate(startDate), targets: TARGETS}, days:{}};
-  for(let n=1;n<=90;n++){
-    try{
-      const raw = localStorage.getItem(STORE_PREFIX+'day:'+n);
-      if(raw) data.days[n] = JSON.parse(raw);
-    }catch(e){}
-  }
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '90-day-log-export-'+fmtDate(new Date())+'.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 async function init(){
   await loadSettings();
+  await saveSettings();
   const today = new Date(); today.setHours(0,0,0,0);
   document.getElementById('startDate').value = fmtDate(startDate);
   document.getElementById('startDate').addEventListener('change', async (e)=>{
